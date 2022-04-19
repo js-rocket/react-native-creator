@@ -1,0 +1,120 @@
+#!/bin/sh
+
+
+show_help() {
+  echo "
+react-native starter script 1.0
+Helps setup a new react-native projet with the name, bundleid and icons that you require
+Commands available are:
+  init - after copying this script to an empty folder run this command to setup normally tools
+  create - create new  reactive project with specified name and bundle id
+           ./rnstart create folder 'App Name' 'com.example.bundleid'
+"
+}
+
+
+# Install tools that would normally be installed globally
+rnstart_init() {
+  yarn init -y
+  yarn add -D react-native react-native-rename-next
+}
+
+
+# example
+# ./node_modules/.bin/react-native init testapp777 --template=file:///Volumes/RAMDisk/rnstarter/node_modules/react-native/template
+rnstart_create() {
+  if [ $# != 3 ]; then show_help; exit; fi
+  BUNDLE_ID="$3"
+
+  echo "Creating $1 $2 $BUNDLE_ID"
+  ./node_modules/.bin/react-native init $1 --template react-native-template-typescript --skip-install
+
+  if [ $? = 0 ]; then
+    # if new folder successfully created then go into folder
+    cd $1
+    mkdir _tools
+    cp ../android_multitool.java _tools/.
+    cp -R ../node_modules .
+    cp ../env.* .
+    cp ../run-app ./run
+
+    # link to local version of react native tool instead of using global copy
+    # ln -s ./node_modules/.bin/react-native rn
+    ../node_modules/.bin/react-native-rename-next "$2" -b "$BUNDLE_ID"
+
+    # Update IOS bundle identifier
+    IOS_PROJECT_FILE=$(find ./ios -name '*.pbxproj')
+
+    echo "Updating $IOS_PROJECT_FILE"
+    if [ ! -f "${IOS_PROJECT_FILE}_original" ]; then cp $IOS_PROJECT_FILE ${IOS_PROJECT_FILE}_original; fi
+    sed "s/PRODUCT_BUNDLE_IDENTIFIER = .*/PRODUCT_BUNDLE_IDENTIFIER = \"$BUNDLE_ID\"/g" \
+      $IOS_PROJECT_FILE ${IOS_PROJECT_FILE}_original > $IOS_PROJECT_FILE
+
+    # patch files to enable hermes engine and android production signing releases
+    ./run patch
+
+    # icon and splash screens 
+    mkdir ./assets
+
+    # Create src folder
+    mkdir ./src
+    mkdir ./src/assets
+    mkdir ./src/components
+    mkdir ./src/navigation
+    mkdir ./src/pages
+    mkdir ./src/services
+    mkdir ./src/state
+    mkdir ./src/styles
+    mkdir ./src/theme
+    mkdir ./src/utils
+    echo "" > ./src/constants.ts
+    echo "" > ./src/types.d.ts
+
+    yarn add react-native-screens react-native-safe-area-context react-native-gesture-handler \
+     @react-navigation/native @react-navigation/stack
+
+    # Go back to parent folder
+    cd ..
+  fi
+}
+
+
+
+# gem install unf_ext -v '0.0.7.7
+rnstart_build() {
+  echo "Building"
+}
+
+
+rnstart_test() {
+  # IOS_PROJECT_FILE=$(find ./myapp/ios/  -name "project.pbxproj")
+  # BUNDLE_ID="com.example.mobileapp"
+  # echo "$IOS_PROJECT_FILE"
+  # if [ ! -f "$IOS_PROJECT_FILE ${IOS_PROJECT_FILE}_original" ]; then cp $IOS_PROJECT_FILE ${IOS_PROJECT_FILE}_original; fi
+  # sed -i "s/PRODUCT_BUNDLE_IDENTIFIER = .*/PRODUCT_BUNDLE_IDENTIFIER = \"$BUNDLE_ID\"/g" $IOS_PROJECT_FILE
+  export SEARCH="    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            // Caution! In production, you need to generate your own keystore file.
+            // see https://reactnative.dev/docs/signed-apk-android.
+            signingConfig signingConfigs.debug"
+   export REPLACE="    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.release"
+  javac android_multitool.java && java android_multitool replace demoapp/android/app/build.gradle
+}
+
+
+if [ "$1" = "init" ]; then rnstart_init; exit; fi
+if [ "$1" = "create" ]; then rnstart_create "$2" "$3" "$4"; exit; fi
+if [ "$1" = "test" ]; then rnstart_test; exit; fi
+if [ "$1" = "help" ]; then show_help; exit; fi
+
+
+show_help
+# echo "Command not found"
