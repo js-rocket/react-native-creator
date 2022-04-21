@@ -13,10 +13,11 @@ Commands available are:
 }
 
 
-# Install tools that would normally be installed globally
+# Download latest version of react-native, to be used to create new project
 rnstart_init() {
+  rm -rf ./node_modules/ yarn.lock 
   yarn init -y
-  yarn add -D react-native react-native-rename-next
+  yarn add react-native
 }
 
 
@@ -24,52 +25,52 @@ rnstart_init() {
 # ./node_modules/.bin/react-native init testapp777 --template=file:///Volumes/RAMDisk/rnstarter/node_modules/react-native/template
 rnstart_create() {
   if [ $# != 3 ]; then show_help; exit; fi
-  BUNDLE_ID="$3"
+  APP_NAME=$1
+  ICON_LABEL="$2"
+  BUNDLE_ID=$3
 
   echo "Creating $1 $2 $BUNDLE_ID"
-  ./node_modules/.bin/react-native init $1 --template react-native-template-typescript --skip-install
+  ./node_modules/.bin/react-native init xx_reactnative_creator_zz --template react-native-template-typescript --skip-install
 
   if [ $? = 0 ]; then
     # if new folder successfully created then go into folder
+    mv xx_reactnative_creator_zz "$1"
     cd $1
+    # commit new project
+    git init
+    git add .buckconfig .bundle/ .eslintrc.js .gitignore .prettierrc.js .ruby-version .watchmanconfig *
+    git commit -m 'initial commit from react-native init'
+
+    # copy files from react-native-creator script
     mkdir _tools
     cp ../android_multitool.java _tools/.
     cp -R ../node_modules .
+    cp -R ../hooks ./
     cp ../env.* .
-    cp ../add_modules ./add_modules
+    cp ../add_modules.sh ./add_modules.sh
     cp ../run-app ./run
+    git add *
+    git commit -m 'add files and tools from react-native-creator'
 
-    # link to local version of react native tool instead of using global copy
-    # ln -s ./node_modules/.bin/react-native rn
-    # ../node_modules/.bin/react-native-rename-next "$1" -b "$BUNDLE_ID"
+    # set app bundleid, app name and icon label.  NOTE: order is important
+    # To do in one step ./run rename-all $BUNDLE_ID $APP_NAME "$ICON_LABEL"
+    ./run rename-bundleid $BUNDLE_ID
+    git add *
+    git commit -m 'Updated bundle id'
+    ./run rename-appname $APP_NAME
+    git add *
+    git commit -m 'Updated app name'
+    ./run rename-icon "$ICON_LABEL"
+    git add *
+    git commit -m 'Updated icon label'
 
-    # Update IOS bundle identifier
-    # IOS_PROJECT_FILE=$(find ./ios -name '*.pbxproj')
-
-    # echo "Updating $IOS_PROJECT_FILE"
-    # if [ ! -f "${IOS_PROJECT_FILE}_original" ]; then cp $IOS_PROJECT_FILE ${IOS_PROJECT_FILE}_original; fi
-    # sed "s/PRODUCT_BUNDLE_IDENTIFIER = .*/PRODUCT_BUNDLE_IDENTIFIER = \"$BUNDLE_ID\";/g" \
-    #   $IOS_PROJECT_FILE ${IOS_PROJECT_FILE}_original > $IOS_PROJECT_FILE
-
-    # patch files to enable hermes engine and android production signing releases
+    # apply patches
     ./run patch
+    git add *
+    git commit -m 'apply patches'
 
     # icon and splash screens 
     mkdir ./assets
-
-    # Create src folder - Copy from template instead
-    # mkdir ./src
-    # mkdir ./src/assets
-    # mkdir ./src/components
-    # mkdir ./src/navigation
-    # mkdir ./src/pages
-    # mkdir ./src/services
-    # mkdir ./src/state
-    # mkdir ./src/styles
-    # mkdir ./src/theme
-    # mkdir ./src/utils
-    # echo "" > ./src/constants.ts
-    # echo "" > ./src/types.d.ts
 
     # Go back to parent folder
     cd ..

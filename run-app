@@ -266,6 +266,111 @@ generate_svg_icons() {
 }
 
 
+# Macos version of sed does not have infile replace option -i so we need this wrapper
+portable_file_replace() {
+  FILENAME="$1"
+  SEARCH_TERM="$2"
+  REPLACE_TERM="$3"
+  # FOR_DEBUG: echo "Search and replacing $SEARCH_TERM => $REPLACE_TERM  in  $FILENAME"
+  sed "s/$SEARCH_TERM/$REPLACE_TERM/g" $FILENAME > ${FILENAME}_tmp
+  mv -f ${FILENAME}_tmp $FILENAME
+  # cp ${FILENAME}_tmp $FILENAME
+  # rm ${FILENAME}_tmp
+}
+
+android_change_bundleid() {
+  NEW_BUNDLEID=$1
+  NEW_BUNDLEPATH=$2
+  BUNDLEID=$3
+  BUNDLEPATH=$4
+  # FOR_DEBUG echo ">> DEBUG: $NEW_BUNDLEID $NEW_BUNDLEPATH $BUNDLEID $BUNDLEPATH"
+
+  # create java folder structure and move files to it
+  mkdir -p android/app/src/debug/java/$NEW_BUNDLEPATH
+  mkdir -p android/app/src/main/java/$NEW_BUNDLEPATH
+  cp -R android/app/src/debug/java/$BUNDLEPATH/* android/app/src/debug/java/$NEW_BUNDLEPATH/
+  cp -R android/app/src/main/java/$BUNDLEPATH/* android/app/src/main/java/$NEW_BUNDLEPATH/
+  rm -rf android/app/src/debug/java/$BUNDLEPATH android/app/src/main/java/$BUNDLEPATH
+
+  # com.example.app becomes com\.example\.app for the search expression
+  SEARCH_BUNDLEID=$(awk -v str=$BUNDLEID 'BEGIN { gsub(/\./,"\\\.", str); print str}')
+  grep -lr "$BUNDLEID" ./android ./ios | while read filename
+  do
+    portable_file_replace  "$filename" $SEARCH_BUNDLEID $NEW_BUNDLEID
+  done
+}
+
+ios_change_bundleid() {
+  NEW_BUNDLEID=$1
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
+  IOS_PROJECT_FILE="ios/$APPNAME.xcodeproj/project.pbxproj"
+  # IOS_PROJECT_FILE=$(find ./ios -name '*.pbxproj')
+
+  echo "Updating $IOS_PROJECT_FILE  with new bundleid: $NEW_BUNDLEID"
+
+  sed "s/PRODUCT_BUNDLE_IDENTIFIER = .*/PRODUCT_BUNDLE_IDENTIFIER = \"$NEW_BUNDLEID\";/g" $IOS_PROJECT_FILE > ${IOS_PROJECT_FILE}_tmp
+  mv -f ${IOS_PROJECT_FILE}_tmp $IOS_PROJECT_FILE
+}
+
+app_change_bundleid() {
+  #   ./run-app rename com.example.myfunkyapp myfunkyapp "My App"
+  NEW_BUNDLEID=$1
+  NEW_BUNDLEPATH=$(awk -v str=$NEW_BUNDLEID 'BEGIN { gsub(/\./,"/", str); print str}')
+  # get current bundle id for android
+  BUNDLEID=$(awk '/applicationId "*"/{ gsub(/"/,"", $2); print $2}' android/app/build.gradle)
+  BUNDLEPATH=$(awk -v str=$BUNDLEID 'BEGIN { gsub(/\./,"/", str); print str}')
+
+  # FOR_DEBUG; echo "$APP_NAME\n$BUNDLEID\n$BUNDLEPATH\n$NEW_BUNDLEPATH"
+
+  # Change bundle ID if it is different
+  if [ "$NEW_BUNDLEID" != "$BUNDLEID" ]; then
+    echo "Changing bundle ID: $BUNDLEID => $NEW_BUNDLEID"
+    android_change_bundleid $NEW_BUNDLEID $NEW_BUNDLEPATH $BUNDLEID $BUNDLEPATH
+    ios_change_bundleid $NEW_BUNDLEID
+  fi
+}
+
+app_change_app_name() {
+  NEW_APPNAME=$1
+  # get current app name
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
+
+  # update file contents
+  grep -lr "$APPNAME" ./android ./ios package.json app.json | while read filename
+  do
+    portable_file_replace  "$filename" $APPNAME $NEW_APPNAME
+  done
+
+  # rename known ios folders
+  mv ios/$APPNAME ios/$NEW_APPNAME
+  mv ios/${APPNAME}Tests ios/${NEW_APPNAME}Tests
+  mv ios/${APPNAME}.xcodeproj ios/${NEW_APPNAME}.xcodeproj
+  # rename known ios files
+  mv ios/${NEW_APPNAME}Tests/${APPNAME}Tests.m ios/${NEW_APPNAME}Tests/${NEW_APPNAME}Tests.m
+  mv ios/$NEW_APPNAME.xcodeproj/xcshareddata/xcschemes/$APPNAME.xcscheme ios/$NEW_APPNAME.xcodeproj/xcshareddata/xcschemes/$NEW_APPNAME.xcscheme
+}
+
+app_change_icon_name() {
+  ICON_NAME="$1"
+  echo "New icon name will be: $ICON_NAME"
+   # get current app name
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
+  # android
+  portable_file_replace android/app/src/main/res/values/strings.xml "<string name=\"app_name\">.*<\/string>" "<string name=\"app_name\">$ICON_NAME<\/string>"
+  # ios
+  plutil -replace CFBundleDisplayName -string "$ICON_NAME" $PWD/ios/$APPNAME/Info.plist
+}
+
+app_rename_all() {
+  if [ "$3" = "" ]; then echo "Usage <com.bundle.id> <app_name> \"Icon Name\""; exit; fi
+
+  # must do bundleid first since it is longer than app name
+  app_change_bundleid $1
+  app_change_app_name $2
+  # icon name can be changed last since it modifies known specific files
+  app_change_icon_name "$3"
+}
+
 app_test() {
   SOURCE_ICON=./assets/icon.png
   # hdpi 72
@@ -280,6 +385,7 @@ app_test() {
   java _tools/resize_image $SOURCE_ICON android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 144
   java _tools/resize_image $SOURCE_ICON android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 192
 }
+
 
 # read environment from a file
 if [ -f ./env.settings ]; then . ./env.settings; fi
@@ -306,6 +412,20 @@ if [ "$1" = "update-app-icon" ]; then generate_app_icon; exit; fi
 
 if [ "$1" = "update-icons" ]; then generate_svg_icons; exit; fi
 
-if [ "$1" = "test" ]; then app_test; exit; fi
+if [ "$1" = "rename-all" ]; then app_rename_all "$2" "$3" "$4"; exit; fi
+if [ "$1" = "rename-bundleid" ]; then app_change_bundleid "$2"; exit; fi
+if [ "$1" = "rename-appname" ]; then app_change_app_name "$2"; exit; fi
+if [ "$1" = "rename-icon" ]; then app_change_icon_name "$2"; exit; fi
+
+if [ "$1" = "test" ]; then app_test "$2"; exit; fi
+
+if [ "$1" = "android" ]; then ./node_modules/.bin/react-native run-android --deviceId "emulator-5554"; exit; fi
+if [ "$1" = "ios" ]; then ./node_modules/.bin/react-native run-ios --simulator "iPhone 11"; exit; fi
+
+if [ "$1" = "clean" ]; then
+  cd android; ./gradlew clean; cd ..
+  cd ios; rm -rf build/; xcodebuild clean; cd ..
+  exit
+fi
 
 echo "Command not found"
