@@ -36,19 +36,20 @@ rnstart_create() {
     cp ../android_multitool.java _tools/.
     cp -R ../node_modules .
     cp ../env.* .
+    cp ../add_modules ./add_modules
     cp ../run-app ./run
 
     # link to local version of react native tool instead of using global copy
     # ln -s ./node_modules/.bin/react-native rn
-    ../node_modules/.bin/react-native-rename-next "$2" -b "$BUNDLE_ID"
+    # ../node_modules/.bin/react-native-rename-next "$1" -b "$BUNDLE_ID"
 
     # Update IOS bundle identifier
-    IOS_PROJECT_FILE=$(find ./ios -name '*.pbxproj')
+    # IOS_PROJECT_FILE=$(find ./ios -name '*.pbxproj')
 
-    echo "Updating $IOS_PROJECT_FILE"
-    if [ ! -f "${IOS_PROJECT_FILE}_original" ]; then cp $IOS_PROJECT_FILE ${IOS_PROJECT_FILE}_original; fi
-    sed "s/PRODUCT_BUNDLE_IDENTIFIER = .*/PRODUCT_BUNDLE_IDENTIFIER = \"$BUNDLE_ID\"/g" \
-      $IOS_PROJECT_FILE ${IOS_PROJECT_FILE}_original > $IOS_PROJECT_FILE
+    # echo "Updating $IOS_PROJECT_FILE"
+    # if [ ! -f "${IOS_PROJECT_FILE}_original" ]; then cp $IOS_PROJECT_FILE ${IOS_PROJECT_FILE}_original; fi
+    # sed "s/PRODUCT_BUNDLE_IDENTIFIER = .*/PRODUCT_BUNDLE_IDENTIFIER = \"$BUNDLE_ID\";/g" \
+    #   $IOS_PROJECT_FILE ${IOS_PROJECT_FILE}_original > $IOS_PROJECT_FILE
 
     # patch files to enable hermes engine and android production signing releases
     ./run patch
@@ -56,22 +57,19 @@ rnstart_create() {
     # icon and splash screens 
     mkdir ./assets
 
-    # Create src folder
-    mkdir ./src
-    mkdir ./src/assets
-    mkdir ./src/components
-    mkdir ./src/navigation
-    mkdir ./src/pages
-    mkdir ./src/services
-    mkdir ./src/state
-    mkdir ./src/styles
-    mkdir ./src/theme
-    mkdir ./src/utils
-    echo "" > ./src/constants.ts
-    echo "" > ./src/types.d.ts
-
-    yarn add react-native-screens react-native-safe-area-context react-native-gesture-handler \
-     @react-navigation/native @react-navigation/stack
+    # Create src folder - Copy from template instead
+    # mkdir ./src
+    # mkdir ./src/assets
+    # mkdir ./src/components
+    # mkdir ./src/navigation
+    # mkdir ./src/pages
+    # mkdir ./src/services
+    # mkdir ./src/state
+    # mkdir ./src/styles
+    # mkdir ./src/theme
+    # mkdir ./src/utils
+    # echo "" > ./src/constants.ts
+    # echo "" > ./src/types.d.ts
 
     # Go back to parent folder
     cd ..

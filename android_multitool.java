@@ -143,7 +143,7 @@ public class android_multitool {
     System.out.printf("Updating file: %s\n", filePath);
 
     String content = readFileToString(filePath);
-    System.out.printf("%s\n", content);
+    // FOR DEBUG System.out.printf("%s\n", content);
     String newContent = content.replace(searchString, replaceString);
     writeStringToFile(filePath, newContent);
   }
