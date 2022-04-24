@@ -10,9 +10,10 @@ yarn add styled-components react-native-svg \
   @react-navigation/native @react-navigation/bottom-tabs @react-navigation/stack \
   @react-native-async-storage/async-storage
 
-yarn add -D @types/moment @types/styled-components @types/styled-components-react-native \
+yarn add -D @types/styled-components @types/styled-components-react-native \
   @svgr/cli
 
 
 # Good extras to include in projects
 # yarn add moment-timezone
+# yarn add -D @types/moment
