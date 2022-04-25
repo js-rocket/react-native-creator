@@ -244,18 +244,20 @@ ios_upload_ipa() {
 
 generate_app_icon() {
   SOURCE_ICON=./assets/icon.png
-  RESIZE_COMMAND="java -cp _tools/ resize_image"
-  # hdpi 72
-  # mdpi 48
-  # xhdpi 96
-  # xxhdpi 144
-  # xxxhdpi 192
-  javac _tools/resize_image.java 
+  RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
+  javac _tools/android_multitool.java
+  # Generate normal square
   $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-hdpi/ic_launcher.png 72
-  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-mdpi/ic_launcher.png 48 
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-mdpi/ic_launcher.png 48
   $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 96
   $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 144
   $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 192
+  # Generate rounded icons
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png 72 round
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png 48 round
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png 96 round
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png 144 round
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png 192 round
 }
 
 
@@ -350,7 +352,7 @@ app_change_app_name() {
   mv ios/$NEW_APPNAME.xcodeproj/xcshareddata/xcschemes/$APPNAME.xcscheme ios/$NEW_APPNAME.xcodeproj/xcshareddata/xcschemes/$NEW_APPNAME.xcscheme
 }
 
-app_change_icon_name() {
+update_app_label() {
   ICON_NAME="$1"
   echo "New icon name will be: $ICON_NAME"
    # get current app name
@@ -368,22 +370,15 @@ app_rename_all() {
   app_change_bundleid $1
   app_change_app_name $2
   # icon name can be changed last since it modifies known specific files
-  app_change_icon_name "$3"
+  update_app_label "$3"
 }
 
 app_test() {
   SOURCE_ICON=./assets/icon.png
-  # hdpi 72
-  # mdpi 48
-  # xhdpi 96
-  # xxhdpi 144
-  # xxxhdpi 192
-  javac _tools/resize_image.java 
-  java _tools/resize_image $SOURCE_ICON android/app/src/main/res/mipmap-hdpi/ic_launcher.png 72
-  java _tools/resize_image $SOURCE_ICON android/app/src/main/res/mipmap-mdpi/ic_launcher.png 48 
-  java _tools/resize_image $SOURCE_ICON android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 96
-  java _tools/resize_image $SOURCE_ICON android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 144
-  java _tools/resize_image $SOURCE_ICON android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 192
+  RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
+  javac _tools/android_multitool.java
+  $RESIZE_COMMAND $SOURCE_ICON ic_launcher.png 128
+  $RESIZE_COMMAND $SOURCE_ICON ic_launcher_rounded.png 128 round
 }
 
 increase_watchers() {
@@ -403,7 +398,7 @@ check_file_watchers() {
   fi
 }
 
-# Check pre-requistes
+# Check linux system requirements
 if [ "$1" = "increase-watchers" ]; then increase_watchers; exit; fi
 check_file_watchers
 
@@ -429,13 +424,13 @@ if [ "$1" = "android-key-check" ]; then jarsigner -verify -verbose -certs $2; ex
 
 if [ "$1" = "patch" ]; then ios_patch_podfile; android_patch_app_build_gradle; exit; fi
 if [ "$1" = "update-app-icon" ]; then generate_app_icon; exit; fi
+if [ "$1" = "update-app-label" ]; then update_app_label "$2"; exit; fi
 
 if [ "$1" = "update-icons" ]; then generate_svg_icons; exit; fi
 
 if [ "$1" = "rename-all" ]; then app_rename_all "$2" "$3" "$4"; exit; fi
 if [ "$1" = "rename-bundleid" ]; then app_change_bundleid "$2"; exit; fi
 if [ "$1" = "rename-appname" ]; then app_change_app_name "$2"; exit; fi
-if [ "$1" = "rename-icon" ]; then app_change_icon_name "$2"; exit; fi
 
 if [ "$1" = "test" ]; then app_test "$2"; exit; fi
 

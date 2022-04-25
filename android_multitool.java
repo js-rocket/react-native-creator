@@ -7,6 +7,7 @@ import java.util.Arrays;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.geom.Ellipse2D;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,7 +22,7 @@ import java.io.IOException;
 
 public class android_multitool {
   private static String USAGE_HELP = "Usage: java android_multitool <tool> <tool_options>\nWhere tools and options:\n" +
-      // Image resize tool help
+  // Image resize tool help
       "  resize_image <input.png> <output.size> <new_width>\n    Tool to resize image files\n\n" +
       // multiline replace tool help
       "  replace <filename>\n    Tool to perform a multiline search and replace in a file.\n" +
@@ -35,7 +36,7 @@ public class android_multitool {
 
     String toolName = args[0];
     String[] toolOptions = Arrays.copyOfRange(args, 1, args.length);
-    // System.out.printf("%d   %d\n", args.length, toolOptions.length);
+    // System.out.printf("%d %d\n", args.length, toolOptions.length);
 
     switch (toolName) {
       case "resize_image":
@@ -51,6 +52,7 @@ public class android_multitool {
   // import javax.imageio.ImageIO;
   // import java.awt.*;
   // import java.awt.image.BufferedImage;
+  // import java.awt.geom.Ellipse2D
   // import java.io.FileInputStream;
   // import java.io.IOException;
   // import java.io.InputStream;
@@ -58,31 +60,32 @@ public class android_multitool {
   // import java.nio.file.Paths;
   public static void image_resizer(String[] args) throws IOException {
 
-    if (args.length != 3) {
-      System.out.print("Usage: java resize_image <input.png> <output.size> <new_width>\n");
+    if (args.length < 3 || args.length > 4) {
+      System.out.print("Usage: java resize_image <input.png> <output.size> <new_width> [round]\n");
       System.exit(-1);
     }
 
     Path source = Paths.get(args[0]);
     Path target = Paths.get(args[1]);
     int new_width = Integer.parseInt(args[2]);
+    boolean isRound = args.length == 4 && args[3].equals("round");
 
     try (InputStream is = new FileInputStream(source.toFile())) {
-      resize(is, target, new_width);
+      resize(is, target, new_width, isRound);
     }
 
   }
 
   private static void resize(InputStream input, Path target,
-      int newWidth) throws IOException {
+      int newWidth, boolean isRound) throws IOException {
 
     BufferedImage originalImage = ImageIO.read(input);
 
     // Scale height to new width
     int newHeight = newWidth * originalImage.getHeight() / originalImage.getWidth();
 
-    System.out.printf("Original %d x %d => New %d x %d\n", originalImage.getWidth(), originalImage.getHeight(),
-        newWidth, newHeight);
+    System.out.printf("Original %d x %d => New %d x %d %s\n", originalImage.getWidth(), originalImage.getHeight(),
+        newWidth, newHeight, isRound ? "round" : "");
 
     /**
      * SCALE_AREA_AVERAGING
@@ -93,28 +96,31 @@ public class android_multitool {
      */
     Image newResizedImage = originalImage
         .getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
+    BufferedImage bim = convertToBufferedImage(newResizedImage, isRound);
 
     String s = target.getFileName().toString();
     String fileExtension = s.substring(s.lastIndexOf(".") + 1);
 
     // we want image in png format
-    ImageIO.write(convertToBufferedImage(newResizedImage),
-        fileExtension, target.toFile());
+    ImageIO.write(bim, fileExtension, target.toFile());
 
   }
 
-  public static BufferedImage convertToBufferedImage(Image img) {
+  public static BufferedImage convertToBufferedImage(Image img, boolean isRound) {
 
     if (img instanceof BufferedImage) {
       return (BufferedImage) img;
     }
+    int imgWidth = img.getWidth(null);
+    int imgHeight = img.getHeight(null);
 
     // Create a buffered image with transparency
-    BufferedImage bi = new BufferedImage(
-        img.getWidth(null), img.getHeight(null),
-        BufferedImage.TYPE_INT_ARGB);
+    BufferedImage bi = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_ARGB);
 
     Graphics2D graphics2D = bi.createGraphics();
+    if (isRound)
+      graphics2D.setClip(new Ellipse2D.Double(0, 0, imgWidth, imgHeight));
+
     graphics2D.drawImage(img, 0, 0, null);
     graphics2D.dispose();
 
