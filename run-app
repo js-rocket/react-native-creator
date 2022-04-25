@@ -405,12 +405,62 @@ app_rename_all() {
   update_app_label "$3"
 }
 
-app_test() {
+# Changes IOS splash screen to a single color before react native executes
+# Best to keep the splash screen in react native code
+update_ios_splash() {
+  COLOR_RED=$1
+  COLOR_GREEN=$2
+  COLOR_BLUE=$3
+  DECIMAL_RED=$( awk "BEGIN{print $COLOR_RED / 255.0}" )
+  DECIMAL_GREEN=$( awk "BEGIN{print $COLOR_GREEN / 255.0}" )
+  DECIMAL_BLUE=$( awk "BEGIN{print $COLOR_BLUE / 255.0}" )
+
   APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
-  SOURCE_ICON=./assets/icon.png
-  RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
-  javac _tools/android_multitool.java
-  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_20px.png 20
+
+  NEW_LAUNCHSCREEN_FILE="ios/$APPNAME/LaunchScreen.storyboard"
+  APP_DELEGATE="ios/$APPNAME/AppDelegate.mm"
+
+  awk -v red=$COLOR_RED -v green=$COLOR_GREEN -v blue=$COLOR_BLUE \
+    '{if ($0 ~ /rootView.backgroundColor/) {printf "rootView.backgroundColor = [[UIColor alloc] initWithRed:%f green:%f blue:%f alpha:1];\n", (red/255.0), (green/255.0), (blue/255.0);} else {print} }' \
+    $APP_DELEGATE > ${APP_DELEGATE}_tmp
+  mv ${APP_DELEGATE}_tmp $APP_DELEGATE
+
+  echo '<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="19455" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+    <device id="retina4_7" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="19454"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="EHf-IW-A2E">
+            <objects>
+                <viewController id="01J-lp-oVM" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
+                        <color key="backgroundColor" red="'$DECIMAL_RED'" green="'$DECIMAL_GREEN'" blue="'$DECIMAL_BLUE'" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="52.173913043478265" y="375"/>
+        </scene>
+    </scenes>
+</document>
+' > $NEW_LAUNCHSCREEN_FILE
+}
+
+update_app_splash() {
+  if [ "$3" = "" ]; then
+    echo "Usage ./run update-app-splash <red> <green> <blue>\n  where each color is from 0 - 255";
+    exit
+  fi
+  update_ios_splash $1 $2 $3
 }
 
 increase_watchers() {
@@ -429,6 +479,15 @@ check_file_watchers() {
     fi
   fi
 }
+
+app_test() {
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
+  SOURCE_ICON=./assets/icon.png
+  RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
+  javac _tools/android_multitool.java
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_20px.png 20
+}
+
 
 # Check linux system requirements
 if [ "$1" = "increase-watchers" ]; then increase_watchers; exit; fi
@@ -457,6 +516,7 @@ if [ "$1" = "android-key-check" ]; then jarsigner -verify -verbose -certs $2; ex
 if [ "$1" = "patch" ]; then ios_patch_podfile; android_patch_app_build_gradle; exit; fi
 if [ "$1" = "update-app-icon" ]; then generate_app_icon; exit; fi
 if [ "$1" = "update-app-label" ]; then update_app_label "$2"; exit; fi
+if [ "$1" = "update-app-splash" ]; then update_app_splash $2 $3 $4; exit; fi
 
 if [ "$1" = "update-icons" ]; then generate_svg_icons; exit; fi
 
