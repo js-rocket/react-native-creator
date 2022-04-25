@@ -131,6 +131,25 @@ android_key_remove() {
   rm -f $FULL_KEYFILE_PATH
 }
 
+generate_android_icon() {
+  echo "## Generating Android icons"
+  SOURCE_ICON=./assets/icon.png
+  RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
+  javac _tools/android_multitool.java
+  # Generate normal square
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-hdpi/ic_launcher.png 72
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-mdpi/ic_launcher.png 48
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 96
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 144
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 192
+  # Generate rounded icons
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png 72 round
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png 48 round
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png 96 round
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png 144 round
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png 192 round
+}
+
 
 ios_patch_podfile() {
   IOS_POD_FILE=./ios/Podfile
@@ -242,22 +261,35 @@ ios_upload_ipa() {
   xcrun altool --upload-app --type ios -f build/ios/ipa/$IOS_IPA_FILE -u $IOS_UPLOAD_USER -p $IOS_UPLOAD_PASSWORD
 }
 
-generate_app_icon() {
+generate_ios_icon() {
+  echo "## Generating IOS icons"
   SOURCE_ICON=./assets/icon.png
   RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
   javac _tools/android_multitool.java
-  # Generate normal square
-  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-hdpi/ic_launcher.png 72
-  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-mdpi/ic_launcher.png 48
-  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 96
-  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 144
-  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 192
-  # Generate rounded icons
-  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png 72 round
-  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png 48 round
-  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png 96 round
-  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png 144 round
-  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png 192 round
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_20px.png 20
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_29px.png 29
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_40px.png 40
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_58px.png 58
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_60px.png 60
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_76px.png 76
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_80px.png 80
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_87px.png 87
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_120px.png 120
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_152px.png 152
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_167px.png 167
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_180px.png 180
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_1024px.png 1024
+
+  # Update content index to use icons:
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
+  CONTENT_JSON="ios/$APPNAME/Images.xcassets/AppIcon.appiconset/Contents.json"
+  FIXED_CONTENT='{"images":[{"filename":"appicon_40px.png","idiom":"iphone","scale":"2x","size":"20x20"},{"filename":"appicon_60px.png","idiom":"iphone","scale":"3x","size":"20x20"},{"filename":"appicon_58px.png","idiom":"iphone","scale":"2x","size":"29x29"},{"filename":"appicon_87px.png","idiom":"iphone","scale":"3x","size":"29x29"},{"filename":"appicon_80px.png","idiom":"iphone","scale":"2x","size":"40x40"},{"filename":"appicon_120px.png","idiom":"iphone","scale":"3x","size":"40x40"},{"filename":"appicon_120px.png","idiom":"iphone","scale":"2x","size":"60x60"},{"filename":"appicon_180px.png","idiom":"iphone","scale":"3x","size":"60x60"},{"filename":"appicon_20px.png","idiom":"ipad","scale":"1x","size":"20x20"},{"filename":"appicon_40px.png","idiom":"ipad","scale":"2x","size":"20x20"},{"filename":"appicon_29px.png","idiom":"ipad","scale":"1x","size":"29x29"},{"filename":"appicon_58px.png","idiom":"ipad","scale":"2x","size":"29x29"},{"filename":"appicon_40px.png","idiom":"ipad","scale":"1x","size":"40x40"},{"filename":"appicon_80px.png","idiom":"ipad","scale":"2x","size":"40x40"},{"filename":"appicon_76px.png","idiom":"ipad","scale":"1x","size":"76x76"},{"filename":"appicon_152px.png","idiom":"ipad","scale":"2x","size":"76x76"},{"filename":"appicon_167px.png","idiom":"ipad","scale":"2x","size":"83.5x83.5"},{"filename":"appicon_1024px.png","idiom":"ios-marketing","scale":"1x","size":"1024x1024"}],"info":{"author":"xcode","version":1}}'
+  echo $FIXED_CONTENT > $CONTENT_JSON
+}
+
+generate_app_icon() {
+  generate_android_icon
+  generate_ios_icon
 }
 
 
@@ -374,11 +406,11 @@ app_rename_all() {
 }
 
 app_test() {
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
   SOURCE_ICON=./assets/icon.png
   RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
   javac _tools/android_multitool.java
-  $RESIZE_COMMAND $SOURCE_ICON ic_launcher.png 128
-  $RESIZE_COMMAND $SOURCE_ICON ic_launcher_rounded.png 128 round
+  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_20px.png 20
 }
 
 increase_watchers() {
