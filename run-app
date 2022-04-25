@@ -60,9 +60,6 @@ COMMENT="## Updates the android/app/build.gradle file. Replace the buildTypes bl
   # Make backup of original file
   if [ ! -f "${APP_BUILD_FILE}_original" ]; then cp $APP_BUILD_FILE ${APP_BUILD_FILE}_original; fi
 
-  # compile tool
-  cd _tools ; javac android_multitool.java ; cd ..
-
   # Update signingConfigs
   export SEARCH="    signingConfigs {
         debug {
@@ -135,7 +132,7 @@ generate_android_icon() {
   echo "## Generating Android icons"
   SOURCE_ICON=./assets/icon.png
   RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
-  javac _tools/android_multitool.java
+
   # Generate normal square
   $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-hdpi/ic_launcher.png 72
   $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-mdpi/ic_launcher.png 48
@@ -265,7 +262,7 @@ generate_ios_icon() {
   echo "## Generating IOS icons"
   SOURCE_ICON=./assets/icon.png
   RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
-  javac _tools/android_multitool.java
+
   $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_20px.png 20
   $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_29px.png 29
   $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_40px.png 40
@@ -408,9 +405,10 @@ app_rename_all() {
 # Changes IOS splash screen to a single color before react native executes
 # Best to keep the splash screen in react native code
 update_ios_splash() {
-  COLOR_RED=$1
-  COLOR_GREEN=$2
-  COLOR_BLUE=$3
+  HEXCOLOR=$1
+  COLOR_RED=$(printf "%d" "0x${HEXCOLOR:0:2}")
+  COLOR_GREEN=$(printf "%d" "0x${HEXCOLOR:2:2}")
+  COLOR_BLUE=$(printf "%d" "0x${HEXCOLOR:4:2}")
   DECIMAL_RED=$( awk "BEGIN{print $COLOR_RED / 255.0}" )
   DECIMAL_GREEN=$( awk "BEGIN{print $COLOR_GREEN / 255.0}" )
   DECIMAL_BLUE=$( awk "BEGIN{print $COLOR_BLUE / 255.0}" )
@@ -421,7 +419,7 @@ update_ios_splash() {
   APP_DELEGATE="ios/$APPNAME/AppDelegate.mm"
 
   awk -v red=$COLOR_RED -v green=$COLOR_GREEN -v blue=$COLOR_BLUE \
-    '{if ($0 ~ /rootView.backgroundColor/) {printf "rootView.backgroundColor = [[UIColor alloc] initWithRed:%f green:%f blue:%f alpha:1];\n", (red/255.0), (green/255.0), (blue/255.0);} else {print} }' \
+    '{if ($0 ~ /rootView.backgroundColor/) {printf "    rootView.backgroundColor = [[UIColor alloc] initWithRed:%f green:%f blue:%f alpha:1];\n", (red/255.0), (green/255.0), (blue/255.0);} else {print} }' \
     $APP_DELEGATE > ${APP_DELEGATE}_tmp
   mv ${APP_DELEGATE}_tmp $APP_DELEGATE
 
@@ -455,12 +453,41 @@ update_ios_splash() {
 ' > $NEW_LAUNCHSCREEN_FILE
 }
 
+update_android_splash() {
+  HEXCOLOR=$1
+  STRINGS_FILE=android/app/src/main/res/values/strings.xml
+  grep 'app_background_color' $STRINGS_FILE > /dev/null
+  if [ $? != 0 ]; then
+    echo "Updating strings $HEXCOLOR"
+    export SEARCH="</resources>"
+    export REPLACE="    <color name=\"app_background_color\">#$HEXCOLOR</color>
+</resources>"
+    java -cp _tools/ android_multitool replace $STRINGS_FILE
+  else
+    awk -v hexcolor=$HEXCOLOR \
+      '{if ($0 ~ /app_background_color/) {printf "    <color name=\"app_background_color\">#%s</color>\n", hexcolor;} else {print} }' \
+      $STRINGS_FILE > ${STRINGS_FILE}_tmp
+    mv ${STRINGS_FILE}_tmp $STRINGS_FILE
+  fi
+
+  STYLES_FILE=android/app/src/main/res/values/styles.xml
+  grep 'app_background_color' $STYLES_FILE > /dev/null
+  if [ $? != 0 ]; then
+    export SEARCH="<!-- Customize your theme here. -->"
+    export REPLACE="<!-- Customize your theme here. -->
+        <item name=\"android:windowBackground\">@color/app_background_color</item>"
+    java -cp _tools/ android_multitool replace $STYLES_FILE
+  fi
+}
+
 update_app_splash() {
-  if [ "$3" = "" ]; then
-    echo "Usage ./run update-app-splash <red> <green> <blue>\n  where each color is from 0 - 255";
+  if [ "$1" = "" ]; then
+    echo "Usage ./run update-app-splash <rrggbb>\n  where rrggbb is a hex value";
     exit
   fi
-  update_ios_splash $1 $2 $3
+
+  update_ios_splash $1
+  update_android_splash $1
 }
 
 increase_watchers() {
@@ -481,13 +508,18 @@ check_file_watchers() {
 }
 
 app_test() {
-  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
-  SOURCE_ICON=./assets/icon.png
-  RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
-  javac _tools/android_multitool.java
-  $RESIZE_COMMAND $SOURCE_ICON ios/demoapp/Images.xcassets/AppIcon.appiconset/appicon_20px.png 20
+  HEXCOLOR=$1
+  # convert hex to decimal
+  COLOR_RED=$(printf "%d" "0x${HEXCOLOR:0:2}")
+  COLOR_GREEN=$(printf "%d" "0x${HEXCOLOR:2:2}")
+  COLOR_BLUE=$(printf "%d" "0x${HEXCOLOR:4:2}")
+  echo $COLOR_RED
+  echo $COLOR_GREEN
+  echo $COLOR_BLUE
 }
 
+# Compile multitool if it does not exist
+if [ ! -f _tools/android_multitool.class ]; then javac _tools/android_multitool.java; fi
 
 # Check linux system requirements
 if [ "$1" = "increase-watchers" ]; then increase_watchers; exit; fi
@@ -526,7 +558,7 @@ if [ "$1" = "rename-appname" ]; then app_change_app_name "$2"; exit; fi
 
 if [ "$1" = "test" ]; then app_test "$2"; exit; fi
 
-if [ "$1" = "android" ]; then ./node_modules/.bin/react-native run-android --deviceId "emulator-5554"; exit; fi
+if [ "$1" = "android" ]; then ./node_modules/.bin/react-native run-android --variant debug --deviceId "emulator-5554"; exit; fi
 if [ "$1" = "ios" ]; then ./node_modules/.bin/react-native run-ios --simulator "iPhone 11"; exit; fi
 
 if [ "$1" = "clean" ]; then
