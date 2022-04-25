@@ -20,7 +20,9 @@ Its purpose is to address the deficiencies of the `react-native init` command wi
   ```
 
 - Move newly created project folder into a new location
-s
+- Go to the project root and run `./add_modules.sh` to install node_modules
+  (This is a separate step because it could take a bit of time - go make a cup of coffee while you wait)
+- Install IOS cocoapod files: `cd ios; pod install; cd ..`
 
 # To create a signing/upload key for Android
 - Make a copy of the environment file `cp env.sample .env` and edit the contents of the .env file
@@ -30,15 +32,19 @@ s
 - From the generated file `.secrets_android/android_key.jks.env` copy the line with `ANDROID_KEYSTORE_BASE64=...` and replace in the `.env` file
 
 
-# To add an app icon and splash screen
-- To set the application icon and splash screen, put a .png picture of size 512 x 512 into the `./assets` folder named `icon.png` and `splash_screen.png` and run the command from the generated project root folder:
+# To add an app icon
+- To set the application icon put a .png picture of size 1024 x 1024 into the `./assets` folder named `icon.png` and run the command from the generated project root folder:
 
 `./run update-app-icon`
 
+# Splash screens
+- Splash screens are implemented in React Native.  To ensure a smooth transition from the native code to React Native the background color can be set to match your splash screen background color.  To set the color type:
+
+`./run update-app-splash ff0012`
+
+where ff0012 is a hexadecimal RGB value
 
 # TODO
-- Implement adapative icon generator for Android
-- implement splash screen generator
 - Simplify IOS certificate generation through command line
 
 
