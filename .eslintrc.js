@@ -11,6 +11,7 @@ module.exports = {
         'no-shadow': 'off',
         'no-undef': 'off',
         'jsx-quotes': 'off',
+        'object-curly-spacing': 0,
         'semi': 'off',
         'react-native/no-inline-styles': 'off'
       },
