@@ -545,7 +545,8 @@ if [ "$1" = "android-key-add" ]; then android_key_add; exit; fi
 if [ "$1" = "android-key-remove" ]; then android_key_remove; exit; fi
 if [ "$1" = "android-key-check" ]; then jarsigner -verify -verbose -certs $2; exit; fi
 
-if [ "$1" = "patch" ]; then ios_patch_podfile; android_patch_app_build_gradle; exit; fi
+# ios_patch_podfile does not do anything yet
+if [ "$1" = "patch" ]; then android_patch_app_build_gradle; exit; fi
 if [ "$1" = "update-app-icon" ]; then generate_app_icon; exit; fi
 if [ "$1" = "update-app-label" ]; then update_app_label "$2"; exit; fi
 if [ "$1" = "update-app-splash" ]; then update_app_splash $2 $3 $4; exit; fi

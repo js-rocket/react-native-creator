@@ -46,10 +46,9 @@ rnstart_create() {
     cp ../android_multitool.java _tools/.
     cp -R ../node_modules .
     cp -R ../hooks ./
-    cp ../env.* .
-    cp ../add_modules.sh ./add_modules.sh
+    cp ../env.* ../.eslintrc.js ../.prettierrc.js ../add_modules.sh ./
     cp ../run-app ./run
-    git add *
+    git add * .eslintrc.js .prettierrc.js
     git commit -m 'add files and tools from react-native-creator'
 
     # set app bundleid, app name and icon label.  NOTE: order is important
@@ -60,7 +59,7 @@ rnstart_create() {
     ./run rename-appname $APP_NAME
     git add *
     git commit -m 'Updated app name'
-    ./run rename-icon "$ICON_LABEL"
+    ./run update-app-label "$ICON_LABEL"
     git add *
     git commit -m 'Updated icon label'
 
@@ -69,8 +68,8 @@ rnstart_create() {
     git add *
     git commit -m 'apply patches'
 
-    # icon and splash screens 
-    mkdir ./assets
+    # create assets folder
+    mkdir assets
 
     # Go back to parent folder
     cd ..
