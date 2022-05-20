@@ -568,5 +568,12 @@ if [ "$1" = "clean" ]; then
   exit
 fi
 
+if [ "$1" = "update-template" ]; then
+  cd ../react-native-template; rm -rf src/ assets/ index.js readme.md add_modules.sh ; cd ../demoapp
+  cp -R ./src ./assets index.js readme.md add_modules.sh ../react-native-template/
+  echo "done!"
+  exit
+fi
+
 
 echo "Command not found"
